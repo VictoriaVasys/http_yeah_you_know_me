@@ -14,11 +14,10 @@ class ServerTest < Minitest::Test
   def test_it_increments_counter
     # server = Server.new
     # server.connect
-    
-    response = Faraday.get 'http://google.com'
+    response = Faraday.get 'http://localhost:9292/'
     assert_equal "<html><head></head><body><h1> Hello, World! (1) </></body></html>", response.body
     
-    response = Faraday.get 'http://google.com'
+    response = Faraday.get 'http://localhost:9292/'
     assert_equal "<html><head></head><body><h1> Hello, World! (2) </></body></html>", response.body
     
   end
@@ -27,7 +26,7 @@ class ServerTest < Minitest::Test
     skip
     server = Server.new
     server.connect
-    response = Faraday.get "http://127.0.0.1:9292/"
+    response = Faraday.get "http://localhost:9292/"
     assert_equal 9, server.request_lines.count
   end
 
