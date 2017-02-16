@@ -16,11 +16,21 @@ class WordSearchTest < Minitest::Test
   end
   
   def test_it_can_find_valid_word
+    ws = WordSearch.new("/word_search?word=dog")
+    assert_equal "<h1> dog is a known word </h1>", ws.find_word
+  end
+  
+  def test_it_can_find_invalid_word
+    ws = WordSearch.new("/word_search?word=doggyjjij")
+    assert_equal "<h1> doggyjjij is not a known word </h1>", ws.find_word
+  end
+  
+  def test_server_can_identify_valid_word
     response = Faraday.get 'http://localhost:9292/word_search?word=dog'
     assert_equal "<html><head></head><body><h1> dog is a known word </h1></body></html>", response.body
   end
 
-  def test_it_can_find_invalid_word
+  def test_server_can_identify_invalid_word
     response = Faraday.get 'http://localhost:9292/word_search?word=doggyjjij'
     assert_equal "<html><head></head><body><h1> doggyjjij is not a known word </h1></body></html>", response.body
   end
