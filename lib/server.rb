@@ -14,8 +14,7 @@ class Server
   def connect
     until request_handler.close_server
       page_view = request_handler.accept_request
-      require "pry"; binding.pry
-      response_handler.send_response(page_view, request_handler.client)
+      response_handler.send_response(page_view, request_handler.client, request_handler.verb, request_handler.response_code, request_handler.redirect_path)
     end
     request_handler.client.close
   end

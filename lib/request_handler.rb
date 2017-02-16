@@ -3,12 +3,14 @@ require "./lib/game"
 require "./lib/word_search"
 
 class RequestHandler
-  attr_reader :tcp_server, :hello_counter, :close_server, :client, :number_of_requests, :headers, :path, :verb, :game
+  attr_reader :tcp_server, :hello_counter, :close_server, :client, :number_of_requests, :headers, :path, :verb, :game, :game_status, :response_code, :redirect_path
   def initialize
     @tcp_server = TCPServer.new(9292)
     @hello_counter = 0
     @close_server = false
     @number_of_requests = 0
+    @game_status = "Not yet started"
+    @response_code = "200 OK"
   end
   
   def accept_request
@@ -26,61 +28,77 @@ class RequestHandler
     unless path == '/favicon.ico'
       @number_of_requests += 1
     end
-    handle_root          if path == '/'
-    handle_hello         if path == '/hello' 
-    handle_date_time     if path == '/datetime'
-    WordSearch.new(path) if path.include?('/word_search')
-    start_game           if start_game?   
-    play_game            if play_game?
-    game.report          if game_status?
-    handle_shut_down     if path == '/shutdown'
+    if path == '/'
+      root
+    elsif path == '/hello' 
+      hello
+    elsif path == '/datetime'
+      date_time
+    elsif path.include?('/word_search')
+      wordsearch    
+    elsif path == '/start_game' && verb == "POST"  
+      start_game
+    elsif path == "/game" && verb == "POST" && game_status == "Started"
+      play_game 
+    elsif path == "/game" && verb == "GET"
+      @response_code = "200 OK"
+      game.report 
+    elsif path == '/force_error'
+      @response_code = "500 Internal Server Error"
+    elsif path == '/shutdown'
+      shut_down
+    else
+      @response_code = "404 Not Found"
+    end
   end
   
-  def start_game?
-    path == '/start_game' && verb == "POST"
-  end
-  
-  def start_game
-    @game = Game.new(rand(100))
-    "<h1> Good luck! </h1>"
-  end
-  
-  def play_game?
-    path == "/game" && verb == "POST"
-  end
-  
-  def play_game
-    game.guesses << client.read(headers[:body_length])
-  end
-  
-  def game_status?
-    path == "/game" && verb == "GET"
-  end
-  
-  def handle_root
+  def root
     "<pre>
       Verb:     #{verb}
       Path:     #{path}
       Protocol: #{headers[:protocol]}
       Host:     #{headers[:host]}
       Port:     #{headers[:port]}
-      Origin:   #{headers[:origin]}
+      Origin:   #{headers[:host]}
       Accept:   #{headers[:accept]}
     </pre>"
   end
 
-  def handle_hello
+  def hello
     @hello_counter += 1
     "<h1> Hello, World! (#{hello_counter}) </h1>"
   end
 
-  def handle_date_time
+  def date_time
     "<h1> #{Time.now.strftime('%H:%M%p on %A, %B %e, %Y')} </h1>"
   end
+  
+  def wordsearch
+    word_search = WordSearch.new(path)
+    word_search.find_word
+  end
 
-  def handle_shut_down
+  def shut_down
     @close_server = true  # or just client.close?
     "<h1> Total Requests: #{number_of_requests} </h1>"
+  end
+  
+  def start_game
+    if @game_status == "Started"
+      @response_code = "403 Forbidden"
+      @redirect_path = nil
+    end
+    @game = Game.new(rand(100))
+    @game_status = "Started"
+    @response_code = "301 Moved Permanently"
+    @redirect_path = "http://localhost:9292/game"
+  end
+  
+  def play_game
+    request_body = client.read(headers[:body_length].to_i)
+    game.guesses << request_body.gsub("\r\n", "").split("guess")[1][1..2].to_i
+    @response_code = "302 Moved Permanently"
+    @redirect_path = "http://localhost:9292/game"
   end
 
 end

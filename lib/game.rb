@@ -1,12 +1,10 @@
 class Game
   attr_reader :num
+  attr_accessor :guesses
   
   def initialize(num)
     @num = num
-  end
-  
-  def guesses
-    []
+    @guesses = []
   end
   
   def report
@@ -14,7 +12,15 @@ class Game
     if guesses.empty?
       "You've made 0 guesses!"
     else
-      "You've made #{guesses.count} guesses! Your guess was #{current_guess}, which was #{guess_evaluation(current_guess)}"
+      "You've made #{guesses.count} #{guess}. \n Your guess was #{current_guess}, which was #{guess_evaluation(current_guess)}."
+    end
+  end
+  
+  def guess
+    if guesses.count == 1
+      "guess"
+    else
+      "guesses"
     end
   end
   

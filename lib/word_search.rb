@@ -3,15 +3,15 @@ class WordSearch
   
   def initialize(path)
     @path = path
-    handle_wordsearch
+    find_word
   end
   
-  def handle_wordsearch
+  def find_word
     word = path.split("=")[1]
     if dictionary.include?(word)
       "<h1> #{word} is a known word </h1>"
     else
-      "<h1> #{word} is a not a known word </h1>"
+      "<h1> #{word} is not a known word </h1>"
     end  
   end
   
