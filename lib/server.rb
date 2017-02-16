@@ -1,4 +1,4 @@
-# require 'socket'
+require 'socket'
 require './lib/request_handler'
 require "./lib/response_handler"
 
@@ -12,14 +12,15 @@ class Server
   end
   
   def connect
-    until request_handler.close_server ## can we just do until client.close? ... or while tcp is open?
+    until request_handler.close_server
       page_view = request_handler.accept_request
+      require "pry"; binding.pry
       response_handler.send_response(page_view, request_handler.client)
     end
     request_handler.client.close
   end
 end
 
-if __FILE__ == $PROGRAM_NAME
+if __FILE__ == $0
   server = Server.new
 end
