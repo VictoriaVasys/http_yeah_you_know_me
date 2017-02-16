@@ -3,7 +3,19 @@ require "./lib/game"
 require "./lib/word_search"
 
 class RequestHandler
-  attr_reader :tcp_server, :hello_counter, :close_server, :client, :number_of_requests, :headers, :path, :verb, :game, :game_status, :response_code, :redirect_path
+  attr_reader :tcp_server, 
+              :hello_counter, 
+              :close_server, 
+              :number_of_requests,
+              :game_status,
+              :response_code,
+              :redirect_path,
+              :client, 
+              :headers, 
+              :path, 
+              :verb, 
+              :game
+              
   def initialize
     @tcp_server = TCPServer.new(9292)
     @hello_counter = 0
@@ -11,6 +23,7 @@ class RequestHandler
     @number_of_requests = 0
     @game_status = "Not yet started"
     @response_code = "200 OK"
+    @redirect_path = nil
   end
   
   def accept_request

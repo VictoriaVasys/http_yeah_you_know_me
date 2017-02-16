@@ -6,6 +6,7 @@ require './lib/request_handler'
 class RequestHandlerTest < Minitest::Test
   
   def test_it_exists
+    skip
     rh = RequestHandler.new
     assert_instance_of RequestHandler, rh
   end
@@ -47,7 +48,7 @@ class RequestHandlerTest < Minitest::Test
     assert_equal "<html><head></head><body><h1>You've made 0 guesses!</h1></body></html>", response.body
     response = Faraday.post "http://localhost:9292/game", { :guess => 42 }
     assert_equal "<html><head></head><body><h1>You've made 1 guess.
- Your guess was 42, which was too high.</h1></body></html>", response.body
+      Your guess was 42, which was too high.</h1></body></html>", response.body
   end
   
   def test_it_returns_total_requests_on_shutdown

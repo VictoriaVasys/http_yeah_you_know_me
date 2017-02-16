@@ -1,4 +1,5 @@
 require 'minitest/autorun'
+require 'minitest/pride'
 require 'faraday'
 require './lib/parse_headers'
 require 'socket'
