@@ -1,6 +1,9 @@
+require 'socket'
+require "./lib/game"
+require "./lib/word_search"
 
 class RequestHandler
-  attr_reader :tcp_server, :hello_counter, :close_server, :client, :number_of_requests
+  attr_reader :tcp_server, :hello_counter, :close_server, :client, :number_of_requests, :headers, :path, :game
   def initialize
     @tcp_server = TCPServer.new(9292)
     @hello_counter = 0
@@ -11,58 +14,107 @@ class RequestHandler
   def accept_request
     puts "Ready for a request"
     @client = tcp_server.accept
-    request_lines = []
-    
-    while line = client.gets and !line.chomp.empty?
-      request_lines << line.chomp
-    end
-
-    @number_of_requests += 1
-    puts "Got this request:"
-    puts request_lines.inspect
-    find_page(request_lines)
+    parse_headers  
+    puts "Got this request: "
+    puts headers
+    find_page(headers[:path])
   end
-
   
-  def find_page(request_lines)
-    path_id = request_lines[0].split[1]
-    return if path_id == '/favicon.ico'
-      # client.puts ["http/1.1 404 not-found"]
-    if path_id == '/'
-      handle_root(request_lines, path_id)
-    elsif path_id == '/hello'
-      handle_hello
-    elsif path_id == '/datetime'
-      handle_date_time
-    elsif path_id.include?('/word_search')
-      word = path_id.split("=")[1]
-      handle_word_search(word)
-    elsif path_id == '/shutdown'
-      handle_shut_down
-    else 
-      "Not a valid path"
+  def parse_headers
+    require "pry"; binding.pry
+    @headers = {}
+    while line = client.gets && !line.chomp.empty?
+      # activate_tractor if tractor?(a,b,c)
+      # def activate_tractor; vehicle.new(a,b,c) ...not sure if right
+      # def tractor?(a,b,c); a + b = c
+      
+      top_headers(line)        if line.include?("HTTP")
+      host_headers(line)       if line.split(":")[0] == "Host"
+      origin_header(line)      if line.split(":")[0] == "Origin"
+      accept_header(line)      if line.split(":")[0] == "Accept"
+      body_length_header(line) if line.split(":")[0] == "Content-Length"
+      other_headers(line)      if header_unknown?(line)
     end
   end
   
-  def handle_root(request_lines, path_id)
-    # Would this be better as a hash?
-    verb = request_lines[0].split[0]
-    protocol = request_lines[0].split[2]
-    host = request_lines[1].split(":")[1].lstrip
-    port = request_lines[1].split(":")[2]
-    origin = host
-    accept = request_lines[-3].split(":")[1].lstrip
-
-
+  def top_headers(line)
+    headers[:verb] = line.split[0]
+    headers[:path] = line.split[1]
+    headers[:protocol] = line.split[2].chomp
+  end
+  
+  def host_headers(line)
+    headers[:host] = line.split(":")[1].lstrip
+    headers[:port] = line.split(":")[2].chomp
+  end
+  
+  def origin_header(line)
+    headers[:origin] = line.split(":")[1].lstrip.chomp
+  end
+  
+  def accept_header(line)
+    headers[:accept] = line.split(":")[1].lstrip.chomp
+  end
+  
+  def body_length_header(line)
+    headers[:body_length] = line.split(":")[1].lstrip.chomp
+  end
+  
+  def header_unknown?(line)
+    line.split(":")[0] != ("Host" || "Origin" || "Accept" || "Content-Length") && !line.include?("HTTP")
+  end
+  
+  def other_headers(line)
+    key, value = line.split(":")
+    headers[key] = value.chomp
+  end
+  
+  def find_page(path)
+    unless path == '/favicon.ico'
+      @number_of_requests += 1
+    end
+    require "pry"; binding.pry
+    handle_root          if path == '/'
+    handle_hello         if path == '/hello' 
+    handle_date_time     if path == '/datetime'
+    WordSearch.new(path) if path.include?('/word_search')
+    start_game           if start_game?   
+    play_game            if play_game?
+    game.report          if game_status?
+    handle_shut_down     if path == '/shutdown'
+  end
+  
+  def start_game?
+    headers[:path] == '/start_game' && headers[:verb] == "POST"
+  end
+  
+  def start_game
+    @game = Game.new(rand(100))
+    "<h1> Good luck! </h1>"
+  end
+  
+  def play_game?
+    headers[:path] == '/game' && headers[:verb] == "POST"
+  end
+  
+  def play_game
+    game.guesses << client.read(headers[:body_length])
+  end
+  
+  def game_status?
+    headers[:path] == '/game' && headers[:verb] == "GET"
+  end
+  
+  def handle_root
     header_string = <<END_OF_HEADERS
     <pre>
-      Verb: #{verb}
-      Path: #{path_id}
-      Protocol: #{protocol}
-      Host: #{host}
-      Port: #{port}
-      Origin: #{origin}
-      Accept: #{accept}
+      Verb: #{headers[:verb]}
+      Path: #{headers[:path]}
+      Protocol: #{headers[:protocol]}
+      Host: #{headers[:host]}
+      Port: #{headers[:port]}
+      Origin: #{headers[:origin]}
+      Accept: #{headers[:accept]}
     </pre>
 END_OF_HEADERS
   end
@@ -73,19 +125,7 @@ END_OF_HEADERS
   end
 
   def handle_date_time
-    "<h1>#{Time.now.strftime('%H:%M%p on %A, %B %e, %Y')}</h1>"
-  end
-  
-  def handle_word_search(word)
-    if dictionary.include?(word)
-      "<h1> #{word} is a known word </h1>"
-    else
-      "<h1> #{word} is a not a known word </h1>"
-    end  
-  end
-  
-  def dictionary
-    File.read("/usr/share/dict/words").split("\n")
+    "<h1> #{Time.now.strftime('%H:%M%p on %A, %B %e, %Y')} </h1>"
   end
 
   def handle_shut_down
@@ -93,5 +133,4 @@ END_OF_HEADERS
     "<h1> Total Requests: #{number_of_requests} </h1>"
   end
 
-  
 end
